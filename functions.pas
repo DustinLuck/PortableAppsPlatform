@@ -34,7 +34,7 @@ unit functions;
 interface
 
 uses Windows, Graphics, SysUtils, Classes, Forms, ShellAPI, dialog, TlHelp32,
-  Dialogs, Messages, ProcessList, StrUtils, Registry, Variables;
+  Dialogs, Messages, ProcessList, StrUtils, Registry, Variables, INIFiles;
 
   procedure OpenURL (strURL: string);
   function processExists(exeFileName: string): Boolean;
@@ -699,7 +699,21 @@ procedure SetPlatformEnvironmentVariables();
 var
   regEnvironment: TRegistry;
   dwordReturn: DWORD_PTR;
+  iniSettingsFile: TINIFile;
+  stringsEnvVars: TStringList;
+  intCounter: Integer;
 begin
+  stringsEnvVars := TStringList.Create;
+  iniSettingsFile:=TINIFile.Create(ExtractFileDir(Application.ExeName) + '\Data\PortableAppsMenu.ini');
+  try
+    if iniSettingsFile.SectionExists('Environment') then
+    begin
+      iniSettingsFile.ReadSectionValues('Environment', stringsEnvVars);
+    end;
+  finally
+    FreeAndNil(iniSettingsFile);
+  end;
+
   if bolSystemWideEnvironmentVariables then
   begin
     regEnvironment:=TRegistry.Create;
@@ -732,6 +746,13 @@ begin
   SetEnvironmentVariable(PChar('PortableApps.comMusic'), PChar(strPortableAppsRootPath + '\Documents\Music'));
   SetEnvironmentVariable(PChar('PortableApps.comVideos'), PChar(strPortableAppsRootPath + '\Documents\Videos'));
   SetEnvironmentVariable(PChar('PortableApps.comPlatformVersion'), PChar(APPVERSION));
+
+  for intCounter := 0 to stringsEnvVars.Count-1 do
+  begin
+    SetEnvironmentVariable(PChar(stringsEnvVars.Names[intCounter]), PChar(ExpandEnvStrings(stringsEnvVars.ValueFromIndex[intCounter])));
+  end;
+
+  FreeAndNil(stringsEnvVars);
 end;
 
 procedure UnSetPlatformEnvironmentVariables();
